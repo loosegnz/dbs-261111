@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MSBA T2 Timetable Generator</title>
+<style>
+:root{--bg:#f7f6f3;--card:#fff;--text:#1f1f1e;--muted:#6b6a66;--faint:#9a9893;--line:#e4e2dc;--accent:#185fa5;--accent-bg:#e6f1fb;--ok-bg:#eaf3de;--ok:#27500a;--bad-bg:#fcebeb;--bad:#791f1f;--warn-bg:#faeeda;--warn:#633806;--hol-bg:#f1efe8}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1a;--card:#262625;--text:#ecebe6;--muted:#a8a69f;--faint:#7d7b75;--line:#3a3a38;--accent:#85b7eb;--accent-bg:#0c447c;--ok-bg:#27500a;--ok:#c0dd97;--bad-bg:#791f1f;--bad:#f7c1c1;--warn-bg:#633806;--warn:#fac775;--hol-bg:#2c2c2a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;font-weight:600;margin:0 0 2px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.step{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.step b{font-weight:600;font-size:14px}
+.step span{color:var(--muted);font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button,select{font:inherit;color:var(--text)}
+.opt{background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;text-align:left}
+.opt:hover{border-color:var(--faint)}
+.opt[aria-pressed="true"]{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.opt small{display:block;color:var(--muted);font-size:12px}
+.opt[aria-pressed="true"] small{color:inherit;opacity:.85}
+.nav{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.nav select{flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.nav button{border:1px solid var(--line);background:transparent;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:14px}
+.nav button:disabled{opacity:.35;cursor:default}
+.badge{font-size:12px;padding:2px 8px;border-radius:8px;white-space:nowrap}
+.ok{background:var(--ok-bg);color:var(--ok)}.bad{background:var(--bad-bg);color:var(--bad)}.warn{background:var(--warn-bg);color:var(--warn)}.core{background:var(--accent-bg);color:var(--accent)}
+.day{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.day:first-child{border-top:0}
+.dl{width:84px;flex:none;font-size:13px;color:var(--muted);padding-top:2px}
+.dl b{display:block;color:var(--text);font-weight:600}
+.items{flex:1;min-width:0}
+.it{display:flex;gap:10px;align-items:flex-start;padding:5px 0 5px 10px;border-left:4px solid var(--c,#888);margin:0 0 6px;border-radius:2px}
+.it.clash{background:var(--bad-bg)}
+.t{width:80px;flex:none;white-space:nowrap;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.m{flex:1;min-width:0}
+.m .n{font-size:14px}.m .d{font-size:12px;color:var(--muted)}
+.hol{background:var(--hol-bg);color:var(--muted);font-size:13px;padding:5px 10px;border-radius:6px;margin-bottom:6px}
+.none{font-size:13px;color:var(--faint);padding:4px 0}
+.conf{margin-top:10px;font-size:13px}
+.conf li{margin:2px 0}
+.dlrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.dlrow select{padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.go{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer}
+@media (prefers-color-scheme:dark){.go{color:#04223d}}
+.go:hover{filter:brightness(1.08)}
+.hint{font-size:12px;color:var(--muted);margin-top:10px}
+.foot{font-size:12px;color:var(--faint);text-align:center;margin-top:18px}
+@media (max-width:480px){.t{width:76px;font-size:12px}.dl{width:64px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MSBA T2 Timetable Generator</h1>
+  <p class="sub">AY2026/27 Trimester 2 &middot; pick your section and electives, then download a calendar file.</p>
+
+  <div class="card">
+    <div class="step"><b>1. Choose your section</b></div>
+    <div class="row" id="secs"></div>
+  </div>
+
+  <div class="card">
+    <div class="step"><b>2. Choose your electives</b><span id="cnt"></span></div>
+    <div class="row" id="els"></div>
+  </div>
+
+  <div class="card">
+    <div class="step"><b>3. Preview</b><span id="summary"></span></div>
+    <div class="nav">
+      <button id="prev" aria-label="Previous week">&larr;</button>
+      <select id="wk" aria-label="Select week"></select>
+      <button id="next" aria-label="Next week">&rarr;</button>
+    </div>
+    <div id="week"></div>
+    <div id="confbox"></div>
+  </div>
+
+  <div class="card">
+    <div class="step"><b>4. Download</b></div>
+    <div class="dlrow">
+      <label for="alarm" style="font-size:13px;color:var(--muted)">Reminder</label>
+      <select id="alarm">
+        <option value="0">None</option>
+        <option value="15">15 minutes before</option>
+        <option value="30">30 minutes before</option>
+        <option value="60">1 hour before</option>
+      </select>
+      <button class="go" id="dl">Download .ics</button>
+    </div>
+    <div class="hint" id="dlhint"></div>
+    <div class="hint">On iPhone, open the downloaded file and tap &ldquo;Add All&rdquo;. Tip: import into a new calendar so you can delete it cleanly if the timetable changes.</div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script id="data" type="application/json">{"meta": {"version": "V4"}, "courses": [{"code": "AN6001", "name": "AI & Big Data in Business", "instructor": "Dr Teoh Teik Toe", "sections": ["A", "B", "C"]}, {"code": "AN6006", "name": "Advanced Database Management", "instructor": "Mr Chan Wai Xin", "sections": ["A", "B", "C"]}, {"code": "AN6007", "name": "Advanced Programming", "instructor": "Mr Koh Choon Chye", "sections": ["A", "B", "C"]}, {"code": "AN6804", "name": "Design Thinking & Technology Management", "instructor": "Assoc Prof John Dong", "sections": ["A", "B", "C"]}, {"code": "AN6805", "name": "Machine Learning Methodology", "instructor": "Assoc Prof Adams Kong", "sections": null}, {"code": "AN6812", "name": "Information Systems & ERP (SAP)", "instructor": "Mr Ramchand Jagtiani", "sections": null}, {"code": "AN6816", "name": "Operations Analytics", "instructor": "Assoc Prof Rohit Bhatnagar", "sections": null}, {"code": "AN6818", "name": "Strategies for Digital Transformation in Business", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "sections": ["A", "B", "C"]}, {"code": "AN6820", "name": "Leading Analytics Projects", "instructor": "Assoc Prof Damien Joseph", "sections": null}, {"code": "AN6821", "name": "Office Process Automation with Python", "instructor": "Mr Chin Chee Kai", "sections": null}], "weeks": [{"label": "Recess Week", "start": "2026-11-01", "end": "2026-11-07"}, {"label": "Week 1", "start": "2026-11-08", "end": "2026-11-14"}, {"label": "Week 2", "start": "2026-11-15", "end": "2026-11-21"}, {"label": "Week 3", "start": "2026-11-22", "end": "2026-11-28"}, {"label": "Week 4", "start": "2026-11-29", "end": "2026-12-05"}, {"label": "Week 5", "start": "2026-12-06", "end": "2026-12-12"}, {"label": "Week 6", "start": "2026-12-13", "end": "2026-12-19"}, {"label": "Recess Week", "start": "2026-12-20", "end": "2027-01-02"}, {"label": "Week 7", "start": "2027-01-03", "end": "2027-01-09"}, {"label": "Week 8", "start": "2027-01-10", "end": "2027-01-16"}, {"label": "Week 9", "start": "2027-01-17", "end": "2027-01-23"}, {"label": "Week 10", "start": "2027-01-24", "end": "2027-01-30"}, {"label": "Week 11", "start": "2027-01-31", "end": "2027-02-06"}, {"label": "Week 12", "start": "2027-02-07", "end": "2027-02-13"}, {"label": "Exam Week", "start": "2027-02-14", "end": "2027-02-20"}, {"label": "Recess Week", "start": "2027-02-21", "end": "2027-02-27"}], "holidays": [{"date": "2026-11-08", "name": "DEEPAVALI"}, {"date": "2026-11-09", "name": "Replacement Holiday"}, {"date": "2026-12-24", "name": "CHRISTMAS EVE"}, {"date": "2026-12-25", "name": "CHRISTMAS DAY"}, {"date": "2026-12-31", "name": "NEW YEAR EVE"}, {"date": "2027-01-01", "name": "HAPPY NEW YEAR"}, {"date": "2027-02-05", "name": "CHINESE NEW YEAR EVE"}, {"date": "2027-02-06", "name": "CHINESE NEW YEAR"}, {"date": "2027-02-07", "name": "CHINESE NEW YEAR"}, {"date": "2027-02-08", "name": "CHINESE NEW YEAR"}], "sessions": [{"date": "2026-11-10", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-10", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-10", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-11", "start": "09:00", "end": "12:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-11", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-11", "start": "18:30", "end": "21:45", "course": "AN6805", "section": null, "instructor": "Assoc Prof Adams Kong", "room": "ABS-01-SR1"}, {"date": "2026-11-12", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-12", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-13", "start": "09:00", "end": "12:15", "course": "AN6812", "section": null, "instructor": "Mr Ramchand Jagtiani", "room": "ABS-01-SR1"}, {"date": "2026-11-13", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-16", "start": "09:00", "end": "12:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-16", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-17", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-17", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-17", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-17", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-17", "start": "18:30", "end": "21:45", "course": "AN6821", "section": null, "instructor": "Mr Chin Chee Kai", "room": "ABS-01-SR1"}, {"date": "2026-11-18", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-18", "start": "18:30", "end": "21:45", "course": "AN6805", "section": null, "instructor": "Assoc Prof Adams Kong", "room": "ABS-01-SR1"}, {"date": "2026-11-19", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-19", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-20", "start": "09:00", "end": "12:15", "course": "AN6812", "section": null, "instructor": "Mr Ramchand Jagtiani", "room": "ABS-01-SR1"}, {"date": "2026-11-20", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-23", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-24", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-24", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-24", "start": "13:00", "end": "16:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-24", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-24", "start": "18:30", "end": "21:45", "course": "AN6821", "section": null, "instructor": "Mr Chin Chee Kai", "room": "ABS-01-SR1"}, {"date": "2026-11-25", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-25", "start": "18:30", "end": "21:45", "course": "AN6805", "section": null, "instructor": "Assoc Prof Adams Kong", "room": "ABS-01-SR1"}, {"date": "2026-11-26", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-11-26", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-27", "start": "09:00", "end": "12:15", "course": "AN6812", "section": null, "instructor": "Mr Ramchand Jagtiani", "room": "ABS-01-SR1"}, {"date": "2026-11-27", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-11-30", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-11-30", "start": "18:30", "end": "21:45", "course": "AN6805", "section": null, "instructor": "Assoc Prof Adams Kong", "room": "ABS-01-SR1"}, {"date": "2026-12-01", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-01", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-01", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-01", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-01", "start": "18:30", "end": "21:45", "course": "AN6821", "section": null, "instructor": "Mr Chin Chee Kai", "room": "ABS-01-SR1"}, {"date": "2026-12-02", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-02", "start": "18:30", "end": "21:45", "course": "AN6805", "section": null, "instructor": "Assoc Prof Adams Kong", "room": "ABS-01-SR1"}, {"date": "2026-12-03", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-03", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-04", "start": "09:00", "end": "12:15", "course": "AN6812", "section": null, "instructor": "Mr Ramchand Jagtiani", "room": "ABS-01-SR1"}, {"date": "2026-12-04", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-07", "start": "09:00", "end": "12:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-08", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-08", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-08", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-08", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-08", "start": "18:30", "end": "21:45", "course": "AN6821", "section": null, "instructor": "Mr Chin Chee Kai", "room": "ABS-01-SR1"}, {"date": "2026-12-09", "start": "09:00", "end": "12:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-10", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-10", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-11", "start": "09:00", "end": "12:15", "course": "AN6812", "section": null, "instructor": "Mr Ramchand Jagtiani", "room": "ABS-01-SR1"}, {"date": "2026-12-11", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-14", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-15", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-15", "start": "18:30", "end": "21:45", "course": "AN6821", "section": null, "instructor": "Mr Chin Chee Kai", "room": "ABS-01-SR1"}, {"date": "2026-12-16", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-16", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-16", "start": "18:30", "end": "21:45", "course": "AN6805", "section": null, "instructor": "Assoc Prof Adams Kong", "room": "ABS-01-SR1"}, {"date": "2026-12-17", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2026-12-17", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2026-12-17", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-18", "start": "09:00", "end": "12:15", "course": "AN6812", "section": null, "instructor": "Mr Ramchand Jagtiani", "room": "ABS-01-SR1"}, {"date": "2026-12-18", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2026-12-18", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-04", "start": "09:00", "end": "12:15", "course": "AN6820", "section": null, "instructor": "Assoc Prof Damien Joseph", "room": "ABS-01-SR1"}, {"date": "2027-01-04", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-04", "start": "18:30", "end": "21:45", "course": "AN6816", "section": null, "instructor": "Assoc Prof Rohit Bhatnagar", "room": "ABS-01-SR1"}, {"date": "2027-01-05", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-05", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-05", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-05", "start": "18:30", "end": "21:45", "course": "AN6821", "section": null, "instructor": "Mr Chin Chee Kai", "room": "ABS-01-SR1"}, {"date": "2027-01-06", "start": "09:00", "end": "12:15", "course": "AN6804", "section": "B", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-06", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-06", "start": "14:00", "end": "17:15", "course": "AN6804", "section": "A", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-06", "start": "18:30", "end": "21:45", "course": "AN6804", "section": "C", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-07", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-07", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-07", "start": "09:00", "end": "12:15", "course": "AN6818", "section": "C", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-07", "start": "14:00", "end": "17:15", "course": "AN6818", "section": "B", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-07", "start": "18:30", "end": "21:45", "course": "AN6818", "section": "A", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-08", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-08", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-11", "start": "09:00", "end": "12:15", "course": "AN6820", "section": null, "instructor": "Assoc Prof Damien Joseph", "room": "ABS-01-SR1"}, {"date": "2027-01-11", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-11", "start": "18:30", "end": "21:45", "course": "AN6816", "section": null, "instructor": "Assoc Prof Rohit Bhatnagar", "room": "ABS-01-SR1"}, {"date": "2027-01-12", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-12", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-12", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-13", "start": "09:00", "end": "12:15", "course": "AN6804", "section": "B", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-13", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-13", "start": "14:00", "end": "17:15", "course": "AN6804", "section": "A", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-13", "start": "18:30", "end": "21:45", "course": "AN6804", "section": "C", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-14", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-14", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-14", "start": "09:00", "end": "12:15", "course": "AN6818", "section": "C", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-14", "start": "14:00", "end": "17:15", "course": "AN6818", "section": "B", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-14", "start": "18:30", "end": "21:45", "course": "AN6818", "section": "A", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-15", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-15", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-18", "start": "09:00", "end": "12:15", "course": "AN6820", "section": null, "instructor": "Assoc Prof Damien Joseph", "room": "ABS-01-SR1"}, {"date": "2027-01-18", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-18", "start": "18:30", "end": "21:45", "course": "AN6816", "section": null, "instructor": "Assoc Prof Rohit Bhatnagar", "room": "ABS-01-SR1"}, {"date": "2027-01-19", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-19", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-19", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-20", "start": "09:00", "end": "12:15", "course": "AN6804", "section": "B", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-20", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-20", "start": "14:00", "end": "17:15", "course": "AN6804", "section": "A", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-20", "start": "18:30", "end": "21:45", "course": "AN6804", "section": "C", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-21", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-21", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-21", "start": "09:00", "end": "12:15", "course": "AN6818", "section": "C", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-21", "start": "14:00", "end": "17:15", "course": "AN6818", "section": "B", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-21", "start": "18:30", "end": "21:45", "course": "AN6818", "section": "A", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-22", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-22", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-25", "start": "09:00", "end": "12:15", "course": "AN6820", "section": null, "instructor": "Assoc Prof Damien Joseph", "room": "ABS-01-SR1"}, {"date": "2027-01-25", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-25", "start": "18:30", "end": "21:45", "course": "AN6816", "section": null, "instructor": "Assoc Prof Rohit Bhatnagar", "room": "ABS-01-SR1"}, {"date": "2027-01-26", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-26", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-26", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-27", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-01-28", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-01-28", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-28", "start": "09:00", "end": "12:15", "course": "AN6818", "section": "C", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-28", "start": "14:00", "end": "17:15", "course": "AN6818", "section": "B", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-28", "start": "18:30", "end": "21:45", "course": "AN6818", "section": "A", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-01-29", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-01-29", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-02-01", "start": "09:00", "end": "12:15", "course": "AN6820", "section": null, "instructor": "Assoc Prof Damien Joseph", "room": "ABS-01-SR1"}, {"date": "2027-02-01", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-02-01", "start": "18:30", "end": "21:45", "course": "AN6816", "section": null, "instructor": "Assoc Prof Rohit Bhatnagar", "room": "ABS-01-SR1"}, {"date": "2027-02-02", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-02-02", "start": "09:00", "end": "12:15", "course": "AN6804", "section": "A", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-02", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-02-02", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-02-02", "start": "14:00", "end": "17:15", "course": "AN6804", "section": "C", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-02", "start": "18:30", "end": "21:45", "course": "AN6804", "section": "B", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-03", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-02-03", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-02-04", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-02-04", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-02-04", "start": "09:00", "end": "12:15", "course": "AN6818", "section": "C", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-04", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-02-04", "start": "14:00", "end": "17:15", "course": "AN6818", "section": "B", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-04", "start": "18:30", "end": "21:45", "course": "AN6818", "section": "A", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-09", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "C", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-02-09", "start": "09:00", "end": "12:15", "course": "AN6804", "section": "A", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-09", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "B", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-02-09", "start": "14:00", "end": "17:15", "course": "AN6006", "section": "A", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-02-09", "start": "14:00", "end": "17:15", "course": "AN6804", "section": "C", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-09", "start": "18:30", "end": "21:45", "course": "AN6804", "section": "B", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-10", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "C", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-02-11", "start": "09:00", "end": "12:15", "course": "AN6006", "section": "B", "instructor": "Mr Chan Wai Xin", "room": "ESR10 (S3.1-B2-11)"}, {"date": "2027-02-11", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "A", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-02-11", "start": "09:00", "end": "12:15", "course": "AN6818", "section": "C", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-11", "start": "14:00", "end": "17:15", "course": "AN6818", "section": "B", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-11", "start": "18:30", "end": "21:45", "course": "AN6818", "section": "A", "instructor": "Assoc Prof Jagadeesh Balakrishnan", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-12", "start": "09:00", "end": "12:15", "course": "AN6007", "section": "C", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-02-12", "start": "14:00", "end": "17:15", "course": "AN6007", "section": "B", "instructor": "Mr Koh Choon Chye", "room": "ABS-01-SR1"}, {"date": "2027-02-15", "start": "09:00", "end": "12:15", "course": "AN6820", "section": null, "instructor": "Assoc Prof Damien Joseph", "room": "ABS-01-SR1"}, {"date": "2027-02-15", "start": "14:00", "end": "17:15", "course": "AN6001", "section": "A", "instructor": "Dr Teoh Teik Toe", "room": "ABS-01-SR1"}, {"date": "2027-02-15", "start": "18:30", "end": "21:45", "course": "AN6816", "section": null, "instructor": "Assoc Prof Rohit Bhatnagar", "room": "ABS-01-SR1"}, {"date": "2027-02-16", "start": "09:00", "end": "12:15", "course": "AN6804", "section": "A", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-16", "start": "14:00", "end": "17:15", "course": "AN6804", "section": "C", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}, {"date": "2027-02-16", "start": "18:30", "end": "21:45", "course": "AN6804", "section": "B", "instructor": "Assoc Prof John Dong", "room": "ESR9 (S3.1-B2-09)"}], "events": [{"date": "2027-01-07", "start": "13:00", "end": "13:45", "name": "T2 Mid-term Feedback", "room": "ABS-03-LT10", "sections": "ALL"}, {"date": "2027-02-02", "start": "12:15", "end": "12:30", "name": "NBS Alumni Office Sharing", "room": "ESR9 (S3.1-B2-09)", "sections": ["A"]}, {"date": "2027-02-02", "start": "17:15", "end": "17:30", "name": "NBS Alumni Office Sharing", "room": "ESR9 (S3.1-B2-09)", "sections": ["C"]}, {"date": "2027-02-02", "start": "18:15", "end": "18:30", "name": "NBS Alumni Office Sharing", "room": "ESR9 (S3.1-B2-09)", "sections": ["B"]}]}</script>
+<script>
+/* ---------- logic (pure) ---------- */
+var DATA = JSON.parse(document.getElementById('data').textContent);
+var COURSE = {}; DATA.courses.forEach(function(c){COURSE[c.code]=c;});
+var CORE = DATA.courses.filter(function(c){return c.sections;}).map(function(c){return c.code;});
+var ELECTIVES = DATA.courses.filter(function(c){return !c.sections;}).map(function(c){return c.code;});
+var COLORS = {AN6001:'#97c459',AN6006:'#f0997b',AN6007:'#fac775',AN6804:'#85b7eb',AN6818:'#5dcaa5',AN6805:'#afa9ec',AN6812:'#ed93b1',AN6816:'#cc99ff',AN6820:'#c8e65a',AN6821:'#ef9f27',EVENT:'#00b050'};
+var MAXEL = 2;
+
+function toMin(t){var a=t.split(':');return +a[0]*60 + +a[1];}
+function dateObj(s){var a=s.split('-');return new Date(Date.UTC(+a[0],+a[1]-1,+a[2]));}
+var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function fmtDay(s){var d=dateObj(s);return DOW[d.getUTCDay()]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()];}
+function fmtRange(a,b){var x=dateObj(a),y=dateObj(b);return x.getUTCDate()+(x.getUTCMonth()!==y.getUTCMonth()?' '+MON[x.getUTCMonth()]:'')+' \u2013 '+y.getUTCDate()+' '+MON[y.getUTCMonth()];}
+
+function buildItems(sec, electives){
+  var items=[];
+  DATA.sessions.forEach(function(s){
+    var pick = s.section ? s.section===sec : electives.indexOf(s.course)>=0;
+    if(!pick) return;
+    var c=COURSE[s.course];
+    items.push({date:s.date,start:s.start,end:s.end,code:s.course,
+      title:s.course+' '+c.name+(s.section?' (Section '+s.section+')':''),
+      short:s.course+' '+c.name,room:s.room,detail:s.instructor,kind:s.section?'core':'elective',color:COLORS[s.course]||'#888',
+      key:s.course+'-'+(s.section||'ALL')});
+  });
+  DATA.events.forEach(function(e){
+    var all = e.sections==='ALL';
+    if(!all && e.sections.indexOf(sec)<0) return;
+    items.push({date:e.date,start:e.start,end:e.end,code:'EVENT',
+      title:e.name+(all?'':' (Section '+sec+')'),short:e.name,room:e.room,detail:all?'All sections':'Section '+sec,kind:'event',color:COLORS.EVENT,
+      key:'EVENT-'+e.name.replace(/\W+/g,'')});
+  });
+  items.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:(toMin(a.start)-toMin(b.start))||(a.code<b.code?-1:1);});
+  return items;
+}
+function findConflicts(items){
+  var out=[],clash={};
+  for(var i=0;i<items.length;i++){
+    for(var j=i+1;j<items.length;j++){
+      if(items[j].date!==items[i].date) break;
+      if(toMin(items[j].start)<toMin(items[i].end) && toMin(items[i].start)<toMin(items[j].end)){
+        out.push([items[i],items[j]]); clash[i]=1; clash[j]=1;
+      }
+    }
+  }
+  items.forEach(function(it,k){it.clash=!!clash[k];});
+  return out;
+}
+function esc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');}
+function fold(line){
+  var enc=new TextEncoder(),out=[],cur='',len=0;
+  for(var ch of line){var n=enc.encode(ch).length; if(len+n>(out.length?74:75)){out.push(cur);cur='';len=0;} cur+=ch; len+=n;}
+  out.push(cur); return out.join('\r\n ');
+}
+function buildICS(items, alarmMin, calName){
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//MSBA T2 Timetable Generator//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH',
+   'X-WR-CALNAME:'+esc(calName),'X-WR-TIMEZONE:Asia/Singapore',
+   'BEGIN:VTIMEZONE','TZID:Asia/Singapore','BEGIN:STANDARD','DTSTART:19700101T000000','TZOFFSETFROM:+0800','TZOFFSETTO:+0800','TZNAME:SGT','END:STANDARD','END:VTIMEZONE'];
+  items.forEach(function(it){
+    var d=it.date.replace(/-/g,''),s=it.start.replace(':','')+'00',e=it.end.replace(':','')+'00';
+    L.push('BEGIN:VEVENT','UID:msba-t2-'+it.key+'-'+d+'-'+it.start.replace(':','')+'@msba-timetable',
+      'DTSTAMP:20261026T000000Z','DTSTART;TZID=Asia/Singapore:'+d+'T'+s,'DTEND;TZID=Asia/Singapore:'+d+'T'+e,
+      'SUMMARY:'+esc(it.title),'LOCATION:'+esc(it.room||''));
+    if(it.detail) L.push('DESCRIPTION:'+esc(it.detail));
+    if(alarmMin>0) L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc(it.short),'TRIGGER:-PT'+alarmMin+'M','END:VALARM');
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.map(fold).join('\r\n')+'\r\n';
+}
+</script>
+<script>
+/* ---------- UI ---------- */
+var state={sec:'A',els:[],wk:0};
+try{var saved=JSON.parse(localStorage.getItem('msba_t2_sel')||'null'); if(saved&&['A','B','C'].indexOf(saved.sec)>=0){state.sec=saved.sec;state.els=(saved.els||[]).filter(function(c){return ELECTIVES.indexOf(c)>=0;}).slice(0,MAXEL);}}catch(e){}
+function save(){try{localStorage.setItem('msba_t2_sel',JSON.stringify({sec:state.sec,els:state.els}));}catch(e){}}
+function $(id){return document.getElementById(id);}
+function opt(label,sub,on,fn){var b=document.createElement('button');b.className='opt';b.setAttribute('aria-pressed',on?'true':'false');b.innerHTML=label+(sub?'<small>'+sub+'</small>':'');b.onclick=fn;return b;}
+
+function defaultWeek(){
+  var today=new Date(); var t=today.getFullYear()+'-'+('0'+(today.getMonth()+1)).slice(-2)+'-'+('0'+today.getDate()).slice(-2);
+  for(var i=0;i<DATA.weeks.length;i++){var w=DATA.weeks[i]; if(t>=w.start&&t<=w.end) return i;}
+  for(var j=0;j<DATA.weeks.length;j++){if(/^Week 1$/.test(DATA.weeks[j].label)) return j;}
+  return 0;
+}
+function initWeeks(){
+  var s=$('wk'); DATA.weeks.forEach(function(w,i){var o=document.createElement('option');o.value=i;o.textContent=w.label+'  \u00b7  '+fmtRange(w.start,w.end);s.appendChild(o);});
+  state.wk=defaultWeek(); s.value=state.wk;
+  s.onchange=function(){state.wk=+s.value;renderWeek();};
+  $('prev').onclick=function(){if(state.wk>0){state.wk--;s.value=state.wk;renderWeek();}};
+  $('next').onclick=function(){if(state.wk<DATA.weeks.length-1){state.wk++;s.value=state.wk;renderWeek();}};
+}
+var ITEMS=[],CONFLICTS=[];
+function recompute(){
+  ITEMS=buildItems(state.sec,state.els); CONFLICTS=findConflicts(ITEMS);
+}
+function renderControls(){
+  var s=$('secs'); s.innerHTML='';
+  ['A','B','C'].forEach(function(x){s.appendChild(opt('Section '+x,'',state.sec===x,function(){state.sec=x;save();renderAll();}));});
+  var e=$('els'); e.innerHTML='';
+  ELECTIVES.forEach(function(c){
+    var on=state.els.indexOf(c)>=0;
+    e.appendChild(opt(c,COURSE[c].name,on,function(){
+      var i=state.els.indexOf(c);
+      if(i>=0){state.els.splice(i,1);} else if(state.els.length<MAXEL){state.els.push(c);} else {return;}
+      save();renderAll();}));
+  });
+  $('cnt').textContent=state.els.length+'/'+MAXEL+' selected';
+}
+function renderWeek(){
+  var w=DATA.weeks[state.wk]; $('prev').disabled=state.wk===0; $('next').disabled=state.wk===DATA.weeks.length-1;
+  var days=[],d=dateObj(w.start),end=dateObj(w.end);
+  while(d<=end){days.push(d.toISOString().slice(0,10)); d=new Date(d.getTime()+86400000);}
+  var hol={}; DATA.holidays.forEach(function(h){(hol[h.date]=hol[h.date]||[]).push(h.name);});
+  var html='',shown=0;
+  days.forEach(function(ds){
+    var its=ITEMS.filter(function(i){return i.date===ds;});
+    var dow=dateObj(ds).getUTCDay(), weekend=(dow===0||dow===6);
+    if(weekend && !its.length && !hol[ds]) return;
+    shown++;
+    var dt=fmtDay(ds).split(' ');
+    html+='<div class="day"><div class="dl"><b>'+dt[0]+'</b>'+dt[1]+' '+dt[2]+'</div><div class="items">';
+    if(hol[ds]) html+='<div class="hol">'+hol[ds].join(' / ')+'</div>';
+    if(!its.length && !hol[ds]) html+='<div class="none">No classes</div>';
+    its.forEach(function(it){
+      html+='<div class="it'+(it.clash?' clash':'')+'" style="--c:'+it.color+'"><div class="t">'+it.start+'\u2013'+it.end+'</div><div class="m"><div class="n">'+it.title+'</div><div class="d">'+[it.room,it.detail].filter(Boolean).join(' \u00b7 ')+'</div></div>'+(it.kind==='elective'?'<span class="badge warn">Elective</span>':it.kind==='event'?'<span class="badge ok">Event</span>':'')+'</div>';
+    });
+    html+='</div></div>';
+  });
+  if(!ITEMS.some(function(i){return i.date>=w.start&&i.date<=w.end;}) && !days.some(function(x){return hol[x];})) html='<div class="none" style="padding:10px 0">No classes this week.</div>';
+  $('week').innerHTML=html;
+}
+function renderSummary(){
+  var n=ITEMS.length, first=ITEMS[0], last=ITEMS[n-1];
+  $('summary').textContent=n+' items \u00b7 '+(first?fmtDay(first.date)+' to '+fmtDay(last.date):'nothing selected');
+  var box=$('confbox');
+  if(!CONFLICTS.length){box.innerHTML='<div class="conf"><span class="badge ok">No time conflicts in the whole term</span></div>';}
+  else{
+    box.innerHTML='<div class="conf"><span class="badge bad">'+CONFLICTS.length+' time conflict'+(CONFLICTS.length>1?'s':'')+' in the term</span><ul>'+CONFLICTS.slice(0,12).map(function(c){return '<li>'+fmtDay(c[0].date)+': '+c[0].short+' ('+c[0].start+'\u2013'+c[0].end+') overlaps '+c[1].short+' ('+c[1].start+'\u2013'+c[1].end+')</li>';}).join('')+(CONFLICTS.length>12?'<li>and '+(CONFLICTS.length-12)+' more</li>':'')+'</ul></div>';
+  }
+  $('dlhint').textContent='Includes '+state.sec+' section classes'+(state.els.length?' plus '+state.els.join(' and '):' (no electives selected yet)')+', all-section events, '+n+' calendar items in total.';
+}
+function renderAll(){recompute();renderControls();renderSummary();renderWeek();}
+$('dl').onclick=function(){
+  var name='MSBA T2 Section '+state.sec+(state.els.length?' + '+state.els.join(' + '):'');
+  var ics=buildICS(ITEMS,+$('alarm').value,name);
+  var blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='MSBA_T2_Section'+state.sec+(state.els.length?'_'+state.els.join('_'):'')+'.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+};
+$('foot').textContent='Based on MSBA AY2026/27 Trimester 2 timetable '+DATA.meta.version+'. Check the official timetable for any later changes.';
+initWeeks(); renderAll();
+</script>
+</body>
+</html>
